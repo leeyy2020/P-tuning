@@ -248,7 +248,8 @@ class TransformerModelWrapper:
               warmup_steps=0,
               max_grad_norm: float = 1,
               logging_steps: int = 50,
-              max_steps=-1, **_):
+              max_steps=-1,
+              alpha=0, **_):
         """
         Train the underlying language model.
 
@@ -346,7 +347,7 @@ class TransformerModelWrapper:
 
                 loss = self.task_helper.train_step(batch) if self.task_helper else None
                 if loss is None:
-                    loss = TRAIN_STEP_FUNCTIONS[MLM_WRAPPER](self)(batch)
+                    loss = TRAIN_STEP_FUNCTIONS[MLM_WRAPPER](self)(batch, alpha = alpha)
 
                 if n_gpu > 1:
                     loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -604,15 +605,38 @@ class TransformerModelWrapper:
 
         return inputs
 
+    def contrastive_loss(self, sentence_embedding, label):
+        batch_num = len(sentence_embedding)
+        criterion = nn.CrossEntropyLoss()
+        cos_sim = nn.CosineSimilarity(dim=0, eps=1e-6)
+        loss = 0
+        for i in range(batch_num):
+            for j in range(batch_num):
+                sim = cos_sim(sentence_embedding[i], sentence_embedding[j])
+                # logit_sim = torch.tensor([(1 - sim) * 50, (1 + sim) * 50])
+                sim = sim.unsqueeze(0)
+                logit_sim = torch.cat(((1 - sim) * 50, (1 + sim) * 50),dim=-1)
+                if label[i] == label[j]:
+                    loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(1, device='cuda:0').view(-1)))
+                else:
+                    loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(0, device='cuda:0').view(-1)))
+        loss = loss / (batch_num * batch_num - batch_num)
+        loss = loss / 100
+        return loss
 
-    def mlm_train_step(self, labeled_batch: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def mlm_train_step(self, labeled_batch: Dict[str, torch.Tensor], alpha = 0) -> torch.Tensor:
         """Perform a MLM training step."""
         inputs = self.generate_default_inputs(labeled_batch)
         mlm_labels, labels = labeled_batch['mlm_labels'], labeled_batch['labels']
         outputs = self.model(**inputs)
         prediction_scores = self.preprocessor.pvp.convert_mlm_logits_to_cls_logits(mlm_labels, outputs[0])
         loss = nn.CrossEntropyLoss()(prediction_scores.view(-1, len(self.config.label_list)), labels.view(-1))
-
+        con_loss = self.contrastive_loss(prediction_scores,labels)
+        logger.info(loss)
+        logger.info(con_loss)
+        logger.info(alpha)
+        loss = loss + con_loss * alpha
+        logger.info(loss)
         return loss
 
 

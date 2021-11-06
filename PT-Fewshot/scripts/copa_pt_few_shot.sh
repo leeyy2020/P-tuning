@@ -1,11 +1,11 @@
-export CUDA_VISIBLE_DEVICES=0
-
+alpha=$1
+task_name=$2
 python3 cli.py \
---data_dir PATH_TO_DATA_DIR/COPA \
+--data_dir ./FewGLUE_32dev/COPA \
 --model_type albert \
 --model_name_or_path albert-xxlarge-v2 \
 --task_name copa \
---output_dir PATH_TO_OUTPUT_DIR/copa \
+--output_dir output_dir/copa/alpha_$alpha \
 --do_eval \
 --do_train \
 --pet_per_gpu_eval_batch_size 1 \
@@ -14,3 +14,6 @@ python3 cli.py \
 --pet_max_seq_length 96 \
 --pet_max_steps 3500 \
 --pattern_ids 1 \
+--alpha $alpha
+
+rm -rf output_dir/$task_name/alpha_$alpha/p* output_dir/$task_name/alpha_$alpha/w*
