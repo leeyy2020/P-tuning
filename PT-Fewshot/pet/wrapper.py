@@ -345,9 +345,10 @@ class TransformerModelWrapper:
                 self.model.train()
                 batch = {k: t.cuda() for k, t in batch.items()}
 
-                loss = self.task_helper.train_step(batch) if self.task_helper else None
+                loss = self.task_helper.train_step(batch, alpha =alpha) if self.task_helper else None
                 if loss is None:
-                    loss = TRAIN_STEP_FUNCTIONS[MLM_WRAPPER](self)(batch, alpha = alpha)
+                    logger.info("use_mlm")
+                    loss = TRAIN_STEP_FUNCTIONS[MLM_WRAPPER](self)(batch, alpha=alpha)
 
                 if n_gpu > 1:
                     loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -629,7 +630,7 @@ class TransformerModelWrapper:
         inputs = self.generate_default_inputs(labeled_batch)
         mlm_labels, labels = labeled_batch['mlm_labels'], labeled_batch['labels']
         outputs = self.model(**inputs)
-        prediction_scores = self.preprocessor.pvp.convert_mlm_logits_to_cls_logits(mlm_labels, outputs[0])
+        prediction_scores = self.preprocessor.pvp.convert_mlm_logits_to_cls_logits2(mlm_labels, outputs[0])
         loss = nn.CrossEntropyLoss()(prediction_scores.view(-1, len(self.config.label_list)), labels.view(-1))
         con_loss = self.contrastive_loss(prediction_scores,labels)
         logger.info(loss)

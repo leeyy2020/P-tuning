@@ -217,6 +217,13 @@ class PVP(ABC):
         labels[label_idx] = 1
         return labels
 
+    def convert_mlm_logits_to_cls_logits2(self, mlm_labels: torch.Tensor, logits: torch.Tensor) -> torch.Tensor:
+        masked_logits = logits[mlm_labels >= 0]
+
+        cls_logits = torch.stack([self._convert_single_mlm_logits_to_cls_logits(ml) for ml in masked_logits])
+        return cls_logits, masked_logits
+
+    
     def convert_mlm_logits_to_cls_logits(self, mlm_labels: torch.Tensor, logits: torch.Tensor) -> torch.Tensor:
         masked_logits = logits[mlm_labels >= 0]
         cls_logits = torch.stack([self._convert_single_mlm_logits_to_cls_logits(ml) for ml in masked_logits])
