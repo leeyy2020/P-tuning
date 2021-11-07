@@ -1,6 +1,6 @@
 alpha=$1
 task_name=$2
-python3 cli.py \
+CUDA_VISIBLE_DEVICES=6 python3 cli.py \
 --data_dir ./FewGLUE_32dev/WSC \
 --model_type albert \
 --model_name_or_path albert-xxlarge-v2 \
@@ -14,7 +14,7 @@ python3 cli.py \
 --pet_max_seq_length 128 \
 --pet_max_steps 3500 \
 --pattern_ids 2 \
---learning_rate 1e-4
+--learning_rate 1e-4 \
 --alpha $alpha
 
 rm -rf output_dir/$task_name/alpha_$alpha/p* output_dir/$task_name/alpha_$alpha/w*
