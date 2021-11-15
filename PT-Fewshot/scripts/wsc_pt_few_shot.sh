@@ -13,10 +13,10 @@ CUDA_VISIBLE_DEVICES=$gpu python3 cli.py \
 --pet_per_gpu_train_batch_size 16 \
 --pet_gradient_accumulation_steps 1 \
 --pet_max_seq_length 128 \
---pet_max_steps 3500 \
+--pet_max_steps 1500 \
 --pattern_ids 2 \
 --learning_rate 1e-4 \
---pet_repetitions 1 \
+--pet_repetitions 3 \
 --alpha $alpha
 
 rm -rf output_dir/$task_name/alpha_$alpha/p* output_dir/$task_name/alpha_$alpha/w*

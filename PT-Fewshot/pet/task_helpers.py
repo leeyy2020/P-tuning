@@ -220,35 +220,32 @@ class WscTaskHelper(TaskHelper):
         criterion = nn.CrossEntropyLoss()
         cos_sim = nn.CosineSimilarity(dim=0, eps=1e-6)
         loss = 0
+        label = label.cpu()
+        label = label.numpy()
         for i in range(batch_num):
             for j in range(batch_num):
                 sim = cos_sim(sentence_embedding[i], sentence_embedding[j])
-                # logit_sim = torch.tensor([(1 - sim) * 50, (1 + sim) * 50])
                 sim = sim.unsqueeze(0)
                 logit_sim = torch.cat(((1 - sim) * 50, (1 + sim) * 50),dim=-1)
+                logger.info(label[i].argmax(), label[j].argmax())
+                logger.info(label[i].argmax() == label[j].argmax())
                 if label[i] == label[j]:
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(1, device='cuda:0').view(-1)))
                 else:
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(0, device='cuda:0').view(-1)))
         loss = loss / (batch_num * batch_num - batch_num)
         loss = loss / 100
+
         return loss
 
     def train_step(self, batch, alpha = 0) -> Optional[torch.Tensor]:
         logger.info(alpha)
         inputs = self.wrapper.generate_default_inputs(batch)
         mlm_labels = batch["mlm_labels"]
-
-
-        logger.info(batch)
         inputs['labels'] = batch['target_token_ids']
-        labels = batch['labels']
-        
-
         outputs = self.wrapper.model(**inputs)
         prediction_scores, prediction_scores_all= self.wrapper.preprocessor.pvp.convert_mlm_logits_to_cls_logits2(mlm_labels, outputs[1])
-
-        con_loss = self.contrastive_loss(prediction_scores_all, labels)
+        con_loss = self.contrastive_loss(prediction_scores_all, batch['target_token_ids'])
         logger.info("con_loss:")        
         logger.info(con_loss)
         loss = outputs[0] + alpha * con_loss

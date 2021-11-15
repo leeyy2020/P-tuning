@@ -618,15 +618,26 @@ class TransformerModelWrapper:
         for i in range(batch_num):
             for j in range(batch_num):
                 sim = cos_sim(sentence_embedding[i], sentence_embedding[j])
+                # logger.info("sim:")
+                # logger.info(sim)
+
                 # logit_sim = torch.tensor([(1 - sim) * 50, (1 + sim) * 50])
                 sim = sim.unsqueeze(0)
                 logit_sim = torch.cat(((1 - sim) * 50, (1 + sim) * 50),dim=-1)
+                logger.info(logit_sim)
+                # logger.info(label[i])
+                # logger.info(label[j])
+                logger.info(label[i] == label[j])
                 if label[i] == label[j]:
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(1, device='cuda:0').view(-1)))
+                    logger.info("loss")
+                    logger.info(loss)
                 else:
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(0, device='cuda:0').view(-1)))
+
         loss = loss / (batch_num * batch_num - batch_num)
         loss = loss / 100
+
         return loss
 
     def mlm_train_step(self, labeled_batch: Dict[str, torch.Tensor], alpha = 0) -> torch.Tensor:
