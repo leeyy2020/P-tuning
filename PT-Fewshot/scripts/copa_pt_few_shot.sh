@@ -1,6 +1,6 @@
 alpha=$1
 task_name=$2
-CUDA_VISIBLE_DEVICES=2 python3 cli.py \
+CUDA_VISIBLE_DEVICES=0 python3 cli.py \
 --data_dir ./FewGLUE_32dev/COPA \
 --model_type albert \
 --model_name_or_path albert-xxlarge-v2 \
