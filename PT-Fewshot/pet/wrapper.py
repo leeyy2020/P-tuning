@@ -125,11 +125,15 @@ class ContinuousPrompt(torch.nn.Module):
 
 
     def forward(self, inputs_embeds=None, attention_mask=None, token_type_ids=None, labels=None):
-
-        return self.model(inputs_embeds=inputs_embeds,
+        tmp = self.model(inputs_embeds=inputs_embeds,
                           attention_mask=attention_mask,
                           labels=labels,
                           token_type_ids=token_type_ids)
+        # logger.info(inputs_embeds.shape[0])
+        # if inputs_embeds.shape[0] == 16:
+        #     logger.info(tmp[0])
+        #     logger.info(tmp[1][0].shape)
+        return tmp
 
 
 

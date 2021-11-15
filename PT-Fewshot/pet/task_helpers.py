@@ -15,14 +15,15 @@ from abc import ABC
 from collections import defaultdict
 from typing import Dict, List, Optional, Any
 import torch
+import torch.nn as nn
 import re
-
+import log
 import numpy as np
 from torch.nn import CrossEntropyLoss
-
+import inspect
 from pet.utils import InputFeatures, InputExample, get_verbalization_ids, chunks, trim_input_ids, remove_final_punc, \
     lowercase_first
-
+logger = log.get_logger('root')
 
 class TaskHelper(ABC):
     """
@@ -214,13 +215,44 @@ class WscTaskHelper(TaskHelper):
         feature_dict['target_token_ids'] = torch.tensor([f.meta['target_token_ids'] for f in features],
                                                         dtype=torch.long)
 
+    def contrastive_loss(self, sentence_embedding, label):
+        batch_num = len(sentence_embedding)
+        criterion = nn.CrossEntropyLoss()
+        cos_sim = nn.CosineSimilarity(dim=0, eps=1e-6)
+        loss = 0
+        for i in range(batch_num):
+            for j in range(batch_num):
+                sim = cos_sim(sentence_embedding[i], sentence_embedding[j])
+                # logit_sim = torch.tensor([(1 - sim) * 50, (1 + sim) * 50])
+                sim = sim.unsqueeze(0)
+                logit_sim = torch.cat(((1 - sim) * 50, (1 + sim) * 50),dim=-1)
+                if label[i] == label[j]:
+                    loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(1, device='cuda:0').view(-1)))
+                else:
+                    loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(0, device='cuda:0').view(-1)))
+        loss = loss / (batch_num * batch_num - batch_num)
+        loss = loss / 100
+        return loss
 
-
-    def train_step(self, batch, **kwargs) -> Optional[torch.Tensor]:
-
+    def train_step(self, batch, alpha = 0) -> Optional[torch.Tensor]:
+        logger.info(alpha)
         inputs = self.wrapper.generate_default_inputs(batch)
+        mlm_labels = batch["mlm_labels"]
+
+
+        logger.info(batch)
         inputs['labels'] = batch['target_token_ids']
-        loss = self.wrapper.model(**inputs)[0]
+        labels = batch['labels']
+        
+
+        outputs = self.wrapper.model(**inputs)
+        prediction_scores, prediction_scores_all= self.wrapper.preprocessor.pvp.convert_mlm_logits_to_cls_logits2(mlm_labels, outputs[1])
+
+        con_loss = self.contrastive_loss(prediction_scores_all, labels)
+        logger.info("con_loss:")        
+        logger.info(con_loss)
+        loss = outputs[0] + alpha * con_loss
+
         return loss
 
 
