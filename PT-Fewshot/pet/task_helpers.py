@@ -227,9 +227,9 @@ class WscTaskHelper(TaskHelper):
                 sim = cos_sim(sentence_embedding[i], sentence_embedding[j])
                 sim = sim.unsqueeze(0)
                 logit_sim = torch.cat(((1 - sim) * 50, (1 + sim) * 50),dim=-1)
-                logger.info(label[i].argmax(), label[j].argmax())
-                logger.info(label[i].argmax() == label[j].argmax())
-                if label[i] == label[j]:
+                # logger.info(label[i].argmax(), label[j].argmax())
+                # logger.info(label[i].argmax() == label[j].argmax())
+                if label[i].argmax() == label[j].argmax():
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(1, device='cuda:0').view(-1)))
                 else:
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(0, device='cuda:0').view(-1)))
