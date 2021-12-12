@@ -97,20 +97,55 @@ class MultiRcTaskHelper(TaskHelper):
 class CopaTaskHelper(TaskHelper):
     """A custom task helper for the COPA dataset."""
 
-    def train_step(self, batch, **kwargs) -> Optional[torch.Tensor]:
+    def contrastive_loss(self, sentence_embedding, label):
+        batch_num = len(sentence_embedding)
+        criterion = nn.CrossEntropyLoss()
+        cos_sim = nn.CosineSimilarity(dim=0, eps=1e-6)
+        loss = 0
+        label = label.cpu()
+        label = label.numpy()
+        for i in range(batch_num):
+            for j in range(batch_num):
+                sim = cos_sim(sentence_embedding[i], sentence_embedding[j])
+                sim = sim.unsqueeze(0)
+                # logger.info(sim)
+                logit_sim = torch.cat(((1 - sim) * 50, (1 + sim) * 50),dim=-1)
+                # logger.info(label[i].argmax(), label[j].argmax())
+                # logger.info(label[i].argmax() == label[j].argmax())
+                if label[i] == label[j]:
+                    loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(1, device='cuda:0').view(-1))) 
+                else:
+                    loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(0, device='cuda:0').view(-1)))
+
+
+        loss = loss / (batch_num * batch_num - batch_num)
+        loss = loss / 100
+        # logger.info(loss)
+        return loss
+        
+    def train_step(self, batch, alpha=0) -> Optional[torch.Tensor]:
 
         inputs = self.wrapper.generate_default_inputs(batch)
         mask = batch['labels'].unsqueeze(1)
-        correct_targets = batch['choice1_token_ids'] * (1 - mask) + batch['choice2_token_ids'] * mask
-        wrong_targets = batch['choice1_token_ids'] * mask + batch['choice2_token_ids'] * (1 - mask)
+        mlm_labels = batch["mlm_labels"]
 
-        prediction_scores = self.wrapper.model(**inputs)[0].view(-1, self.wrapper.model.model.config.vocab_size)
+        correct_targets = batch['choice1_token_ids'] * (1 - mask) + batch['choice2_token_ids'] * mask
+
+        wrong_targets = batch['choice1_token_ids'] * mask + batch['choice2_token_ids'] * (1 - mask)
+        outputs = self.wrapper.model(**inputs)
+        _, prediction_scores_all= self.wrapper.preprocessor.pvp.convert_mlm_logits_to_cls_logits2(mlm_labels, outputs[0])
+        con_loss = self.contrastive_loss(prediction_scores_all, batch['labels'])
+        prediction_scores = outputs[0].view(-1, self.wrapper.model.model.config.vocab_size)
+        # logger.info(con_loss)
         loss_fct = CrossEntropyLoss()
 
         loss_correct_label = loss_fct(prediction_scores, correct_targets.view(-1))
         loss_wrong_label = loss_fct(prediction_scores, wrong_targets.view(-1))
-        loss = 1 + loss_correct_label - loss_wrong_label
+        loss = 1 + loss_correct_label - loss_wrong_label 
+        
         loss[loss < 0] = 0
+
+        loss = loss + alpha * con_loss
         return loss
 
     def eval_step(self, batch: Dict[str, torch.Tensor], decoding_strategy: str = 'default', **kwargs):
