@@ -624,14 +624,14 @@ class TransformerModelWrapper:
                 # logit_sim = torch.tensor([(1 - sim) * 50, (1 + sim) * 50])
                 sim = sim.unsqueeze(0)
                 logit_sim = torch.cat(((1 - sim) * 50, (1 + sim) * 50),dim=-1)
-                logger.info(logit_sim)
+                # logger.info(logit_sim)
                 # logger.info(label[i])
                 # logger.info(label[j])
-                logger.info(label[i] == label[j])
+                # logger.info(label[i] == label[j])
                 if label[i] == label[j]:
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(1, device='cuda:0').view(-1)))
-                    logger.info("loss")
-                    logger.info(loss)
+                    # logger.info("loss")
+                    # logger.info(loss)
                 else:
                     loss += criterion(logit_sim.view(-1, logit_sim.size(-1)), (torch.tensor(0, device='cuda:0').view(-1)))
 
@@ -648,11 +648,11 @@ class TransformerModelWrapper:
         prediction_scores, prediction_scores_all= self.preprocessor.pvp.convert_mlm_logits_to_cls_logits2(mlm_labels, outputs[0])
         loss = nn.CrossEntropyLoss()(prediction_scores.view(-1, len(self.config.label_list)), labels.view(-1))
         con_loss = self.contrastive_loss(prediction_scores_all,labels)
-        logger.info(loss)
-        logger.info(con_loss)
-        logger.info(alpha)
+        # logger.info(loss)
+        # logger.info(con_loss)
+        # logger.info(alpha)
         loss = loss + con_loss * alpha
-        logger.info(loss)
+        # logger.info(loss)
         return loss
 
 

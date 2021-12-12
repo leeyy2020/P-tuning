@@ -1,6 +1,7 @@
 alpha=$1
+gpu=$2
 task_name=rte
-CUDA_VISIBLE_DEVICES=0 python3 cli.py \
+CUDA_VISIBLE_DEVICES=$gpu python3 cli.py \
 --data_dir ./FewGLUE_32dev/RTE \
 --model_type albert \
 --model_name_or_path albert-xxlarge-v2 \

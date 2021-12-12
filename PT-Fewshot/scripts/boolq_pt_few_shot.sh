@@ -1,7 +1,8 @@
 
 alpha=$1
-task_name=$2
-CUDA_VISIBLE_DEVICES=0 python3 cli.py \
+gpu=$2
+task_name=boolq
+CUDA_VISIBLE_DEVICES=$gpu python3 cli.py \
   --data_dir ./FewGLUE_32dev/BoolQ \
   --model_type albert \
   --model_name_or_path albert-xxlarge-v2 \

@@ -239,15 +239,15 @@ class WscTaskHelper(TaskHelper):
         return loss
 
     def train_step(self, batch, alpha = 0) -> Optional[torch.Tensor]:
-        logger.info(alpha)
+        # logger.info(alpha)
         inputs = self.wrapper.generate_default_inputs(batch)
         mlm_labels = batch["mlm_labels"]
         inputs['labels'] = batch['target_token_ids']
         outputs = self.wrapper.model(**inputs)
         prediction_scores, prediction_scores_all= self.wrapper.preprocessor.pvp.convert_mlm_logits_to_cls_logits2(mlm_labels, outputs[1])
         con_loss = self.contrastive_loss(prediction_scores_all, batch['target_token_ids'])
-        logger.info("con_loss:")        
-        logger.info(con_loss)
+        # logger.info("con_loss:")        
+        # logger.info(con_loss)
         loss = outputs[0] + alpha * con_loss
 
         return loss
